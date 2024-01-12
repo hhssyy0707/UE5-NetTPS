@@ -42,5 +42,21 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "MyAnimSettings")
 	float PitchAngle;
 	
+
+public:
+	//재장전
+	UPROPERTY(EditDefaultsOnly, Category = "MyAnimSettings")
+	class UAnimMontage* ReloadMontage;
+	void PlayReloadAnimation();
+
+	//재장전 끝났을때 호출될 Modify 이벤트 함수
+	UFUNCTION()
+	void AnimNotify_OnReloadFinish();
 		
+
+	//죽음처리
+public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "MyAnimSettings")
+	bool IsDead = false;
+	
 };

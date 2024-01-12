@@ -31,6 +31,7 @@ void UNetPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		PitchAngle = FMath::Clamp(PitchAngle, -60,60) * -1;
 
 		bHasPistol = Player->bHasPistol;
+		IsDead = Player->IsDead;
 	}
 
 
@@ -42,4 +43,17 @@ void UNetPlayerAnimInstance::PlayerFireAnimation()
 		Montage_Play(FireMontage, 2);
 	}
 	
+}
+
+void UNetPlayerAnimInstance::PlayReloadAnimation()
+{
+	if (bHasPistol && ReloadMontage) {
+		Montage_Play(ReloadMontage);
+	}
+}
+
+void UNetPlayerAnimInstance::AnimNotify_OnReloadFinish()
+{
+	//애니메이션이 끝난 후 함수 호출해주기 위해( 동작이 끝나고 재장전이 돼야한다.)
+	Player->InitBulletUI();
 }

@@ -26,3 +26,12 @@ void UMainUI::PopBullet(int32 BulletIndex)
 {
 	BulletPanel->RemoveChildAt(BulletIndex);
 }
+
+void UMainUI::RemoveAllBullets()
+{
+	/*for (auto BulltetWidget : BulletPanel->GetAllChildren()) {
+		BulletPanel->RemoveChild(BulltetWidget);
+	}*/
+
+	BulletPanel->ClearChildren();
+}

@@ -14,6 +14,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "NetPlayerAnimInstance.h"
 #include "MainUI.h"
+#include "Components/WidgetComponent.h"
+#include "HealthBar.h"
+#include "NetTPS.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -22,6 +25,7 @@ DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
 ANetTPSCharacter::ANetTPSCharacter()
 {
+	PrimaryActorTick.bCanEverTick = true;
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 		
@@ -66,6 +70,8 @@ ANetTPSCharacter::ANetTPSCharacter()
 	GunComp->SetRelativeLocation(FVector((-7.617589f, 0.958795f, 4.504652f)));
 	GunComp->SetRelativeRotation(FRotator((10.0f, 90.0f, 10.0f)));
 
+	HPUIComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBar"));
+	HPUIComp->SetupAttachment(GetMesh());
 
 }
 
@@ -143,10 +149,7 @@ void ANetTPSCharacter::TakePistol(const FInputActionValue& Value)
 
 		// 7. 총을 잡았으니 Loop 종료
 		break;
-
-
 	}
-
 }
 
 void ANetTPSCharacter::AttachPistol(AActor* PistolActor)
@@ -158,7 +161,6 @@ void ANetTPSCharacter::AttachPistol(AActor* PistolActor)
 	// UI 변경
 	//멀티때 바꿀 예정
 	if (MainUI) {// 멀티
-
 		MainUI->ShowCrosshair(true);
 	}
 }
@@ -166,7 +168,7 @@ void ANetTPSCharacter::AttachPistol(AActor* PistolActor)
 void ANetTPSCharacter::Fire(const FInputActionValue& Value)
 {
 	//총을 소유하고 있지 않다면 처리하지 않는다.
-	if (bHasPistol == false) {
+	if (bHasPistol == false || IsReloading) {
 		return;
 	}
 
@@ -187,11 +189,20 @@ void ANetTPSCharacter::Fire(const FInputActionValue& Value)
 	if (bHit) { // 충돌하면
 		//맞은 자리에 파티클 효과 재생
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), GunEffect, HitInfo.Location, FRotator());
+
+		//맞은 대상이 상대방일 경우 데미지 처리
+		auto OtherPlayer = Cast<ANetTPSCharacter>(HitInfo.GetActor());
+
+		if (OtherPlayer) {
+			OtherPlayer->DamageProcess();
+		}
 	}
 
 	//총쏘는 애니메이션 재생
 	auto Anim = Cast<UNetPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 	Anim->PlayerFireAnimation();
+
+#pragma region AutoReload
 
 	// 총알 소모
 	//CurrentBulletCount--;
@@ -213,10 +224,20 @@ void ANetTPSCharacter::Fire(const FInputActionValue& Value)
 
 			}), 2.0f, false);
 	}
+#pragma endregion
+
 }
 
 void ANetTPSCharacter::InitUIWidget()
-{
+{	
+
+	//Player 아니면 처리하지 않도록 하자
+	auto PC = Cast<APlayerController>(Controller);
+	if (PC == nullptr) {
+		return;
+	}
+
+
 	if (MainUIWidget) {
 		MainUI = Cast<UMainUI>(CreateWidget(GetWorld(), MainUIWidget));
 		MainUI->AddToViewport();
@@ -232,6 +253,79 @@ void ANetTPSCharacter::InitUIWidget()
 	}
 }
 
+void ANetTPSCharacter::ReloadPistol(const FInputActionValue& Value)
+{
+	if(bHasPistol == false || IsReloading == true){
+		return;
+	}
+
+	auto AnimInst = Cast<UNetPlayerAnimInstance>(GetMesh()->GetAnimInstance());
+	AnimInst->PlayReloadAnimation();
+
+	IsReloading = true;
+}
+
+void ANetTPSCharacter::InitBulletUI()
+{
+	
+	MainUI->RemoveAllBullets();
+
+	// 총알 개수 초기화
+	CurrentBulletCount = MaxBulletCount;
+
+	for (int i = 0; i < MaxBulletCount; i++) {
+		MainUI->AddBullet();
+	}
+
+	IsReloading = false;
+
+}
+
+float ANetTPSCharacter::GetHP()
+{
+	return CurrentHP;
+}
+
+void ANetTPSCharacter::SetHP(float Value)
+{
+	CurrentHP = Value;
+	float HPPercent = CurrentHP / MaxHP;
+	
+	if (MainUI) {
+		MainUI->PB_HPValue = HPPercent;
+	}
+	else {
+		auto HPUI = Cast<UHealthBar>(HPUIComp->GetWidget());
+		HPUI->PB_HPValue = HPPercent;
+	}
+}
+
+void ANetTPSCharacter::DamageProcess()
+{
+	HP--;
+
+	// 죽음처리
+	if (HP <= 0) {
+		IsDead = true;
+	}
+}
+
+void ANetTPSCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	PrintNetLog();
+}
+
+void ANetTPSCharacter::PrintNetLog()
+{
+	const FString ConnStr = GetNetConnection() != nullptr ? TEXT("Valid Connection") : TEXT("Invalid Connection");
+	const FString OwnerStr = GetOwner() != nullptr ? GetOwner()->GetName() : TEXT("No Owner");
+
+	const FString LogStr = FString::Printf(TEXT("Connection : %s \nOwner : %s\nLocal Role : %s, Remote Role : %s"), *ConnStr,*OwnerStr,*LOCALROLE, *REMOTEROLE);
+
+	DrawDebugString(GetWorld(), GetActorLocation(), LogStr, nullptr, FColor::Purple,0,true, 1);
+}
+
 void ANetTPSCharacter::DetachPistol(AActor* PistolActor)
 {
 	auto MeshComp = PistolActor->GetComponentByClass<UStaticMeshComponent>();
@@ -242,6 +336,23 @@ void ANetTPSCharacter::DetachPistol(AActor* PistolActor)
 	if (MainUI) {// 멀티
 
 		MainUI->ShowCrosshair(false);
+	}
+}
+
+void ANetTPSCharacter::ReleasePistol(const FInputActionValue& Value)
+{
+	if (bHasPistol == false || IsReloading) {
+		return;
+	}
+
+	//방어코드
+	if (OwnedPistol) {
+
+		DetachPistol(OwnedPistol);
+
+		bHasPistol = false;
+		OwnedPistol->SetOwner(nullptr);
+		OwnedPistol = nullptr;
 	}
 }
 
@@ -271,6 +382,10 @@ void ANetTPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		
 		// 총쏘기
 		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &ANetTPSCharacter::Fire);
+		
+		// 재장전
+		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &ANetTPSCharacter::ReloadPistol);
+
 
 	}
 	else
@@ -312,24 +427,5 @@ void ANetTPSCharacter::Look(const FInputActionValue& Value)
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
-	}
-}
-
-
-
-void ANetTPSCharacter::ReleasePistol(const FInputActionValue& Value)
-{
-	if (bHasPistol == false) {
-		return;
-	}
-
-	//방어코드
-	if (OwnedPistol) {
-
-		DetachPistol(OwnedPistol);
-
-		bHasPistol = false;
-		OwnedPistol->SetOwner(nullptr);
-		OwnedPistol = nullptr;
 	}
 }

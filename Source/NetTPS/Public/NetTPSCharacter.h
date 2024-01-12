@@ -130,5 +130,47 @@ public:
 	int32 MaxBulletCount;
 
 	int32 CurrentBulletCount = MaxBulletCount; // 초기화
+
+	//재장전
+	//Input Action
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* ReloadAction;
+	void ReloadPistol(const FInputActionValue& Value);
+
+	//총알 UI 리셋
+	void InitBulletUI();
+
+	// 지금 장전중인지 
+	bool IsReloading = false;
+
+public:
+	// 플레이어 체력
+	UPROPERTY(EditDefaultsOnly, Category = "PlayerHP")
+	float MaxHP = 10;
+
+	UPROPERTY(EditDefaultsOnly, Category = "PlayerHP")
+	float CurrentHP = MaxHP;
+
+	//언리얼에서만 가능한 코드
+	__declspec(property(get=GetHP, put = SetHP))
+	float HP;
+	float GetHP();
+	void SetHP(float Value);
+
+	UPROPERTY(VisibleAnywhere, Category = "PlayerHP")
+	class UWidgetComponent* HPUIComp;
+	//class UUserWidget* HPUIComp;
+
+	void DamageProcess();
+
+	//죽음
+	public:
+	bool IsDead = false;
+
+public:
+	virtual void Tick( float DeltaSeconds ) override;
+	//네트워크 로그찍는 함수
+	void PrintNetLog();
+
 };
 

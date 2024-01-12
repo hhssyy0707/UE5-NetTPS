@@ -31,5 +31,12 @@ public:
 
 	void PopBullet(int32 BulletIndex);
 
+	//¸ðµç ÃÑ¾Ç UI Á¦°Å
+	void RemoveAllBullets();
+
+public:
+	//Ã¼·Â
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "HP")
+	float PB_HPValue = 1.0f;
 
 };
