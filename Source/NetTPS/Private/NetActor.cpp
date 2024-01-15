@@ -36,10 +36,13 @@ void ANetActor::BeginPlay()
 		FTimerHandle Handle;
 		GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateLambda([&]
 		{
-			MatColor = FLinearColor(FMath::RandRange(0,1),FMath::RandRange(0,1), FMath::RandRange(0, 1),1);
+			// 지역변수로 바꿈
+			FLinearColor MatColor = FLinearColor(FMath::RandRange(0,1),FMath::RandRange(0,1), FMath::RandRange(0, 1),1);
 
 			//리슨서버라서 추가된 내용
 			OnRep_MatColor(); // 클라단에만 적용되기때문에 서버에도 적용시키기 위해 억지로 넣어줌
+
+			ServerRPC_ChangeColor(MatColor); // 실행함수 직접해도되지만 이렇게하면 서버 RPC로 실행됨 
 
 		}),1,true);
 	}
@@ -92,6 +95,51 @@ void ANetActor::OnRep_MatColor()
 	}
 }
 
+void ANetActor::ServerRPC_ChangeColor_Implementation(const FLinearColor NewColor)
+{
+	// 1. Server RPC
+	//if (MatInstDymc) {
+
+	//	MatInstDymc->SetVectorParameterValue(TEXT("FloorColor"), NewColor);
+
+	//}
+
+	//2. Client RPC
+	//ClientRPC_ChangeColor(NewColor); 
+	//Implementation 안함 자동으로 해줌 generated.h에서 서버에서 단순 내함수 처리하는거라 내부 Implementation 함수를 해줘야함 
+	// 어떤 Client인지 안적혀있음 -> 서버를 호출한 클라이언트 한테 응답
+	//공의 MatInstDymc의 오너가 생기면 그 오너의 client에 색상 변경
+	//오너가 생기는 순간 그 클라만 색상 변경됨.
+
+	//3. NetMulti RPC
+	MultiRPC_ChangeColor(NewColor);
+}
+
+bool ANetActor::ServerRPC_ChangeColor_Validate(const FLinearColor NewColor)
+{
+	return true;
+}
+
+void ANetActor::ClientRPC_ChangeColor_Implementation(const FLinearColor NewColor)
+{
+
+	if (MatInstDymc) {
+
+		MatInstDymc->SetVectorParameterValue(TEXT("FloorColor"), NewColor);
+
+	}
+
+}
+
+void ANetActor::MultiRPC_ChangeColor_Implementation(const FLinearColor NewColor)
+{
+	if (MatInstDymc) {
+
+		MatInstDymc->SetVectorParameterValue(TEXT("FloorColor"), NewColor);
+
+	}
+
+}
 
 void ANetActor::PrintNetLog()
 {
@@ -137,7 +185,6 @@ void ANetActor::FindOwner()
 	//영역 시각화
 	DrawDebugSphere(GetWorld(), GetActorLocation(), SearchDistance, 30, FColor::Yellow, false, 0, 0, 1);
 }
-
 
 void ANetActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {

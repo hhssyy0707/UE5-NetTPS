@@ -78,6 +78,8 @@ public:
 
 public:
 	
+	//240115 네트워크 추가
+	UPROPERTY(Replicated)
 	bool bHasPistol = false;
 
 	// 잡을 수 있는 범위
@@ -102,6 +104,7 @@ public:
 	//Input Action
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* ReleasePistolAction;
+
 	void ReleasePistol(const FInputActionValue& Value);
 	void DetachPistol(AActor* PistolActor);
 	
@@ -127,9 +130,14 @@ public:
 	void InitUIWidget();
 
 	UPROPERTY(EditAnywhere, Category = "Bullet")
-	int32 MaxBulletCount;
-
-	int32 CurrentBulletCount = MaxBulletCount; // 초기화
+	int32 MaxBulletCount = 15;
+	
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentBulletCount)
+	//int32 CurrentBulletCount = MaxBulletCount; // 초기화
+	int32 CurrentBulletCount; // 초기화
+	
+	UFUNCTION()
+	void OnRep_CurrentBulletCount();
 
 	//재장전
 	//Input Action
@@ -171,6 +179,31 @@ public:
 	virtual void Tick( float DeltaSeconds ) override;
 	//네트워크 로그찍는 함수
 	void PrintNetLog();
+
+	//============================MultiPlayer 요소들======================
+public:
+	//총 집기
+	UFUNCTION(Server , Reliable)
+	void ServerRPC_TakePistol();
+	
+	UFUNCTION(NetMulticast , Reliable)
+	void MultiRPC_TakePistol(AActor* PistolActor); //어떤 총을 잡는지 네트워크 상으로 날림(NetID)
+	
+	
+	//총 놓기
+	UFUNCTION(Server , Reliable)
+	void ServerRPC_ReleasePistol();
+	
+	UFUNCTION(NetMulticast , Reliable)
+	void MultiRPC_ReleasePistol(AActor* PistolActor); 
+
+	//총 쏘기
+	UFUNCTION(Server , Reliable)
+	void ServerRPC_Fire();
+	
+	UFUNCTION(NetMulticast , Reliable)
+	void MultiRPC_Fire(FHitResult HitInfo, bool bHit);
+
 
 };
 

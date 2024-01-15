@@ -58,4 +58,17 @@ public:
 	UFUNCTION()
 	void OnRep_MatColor(); 
 
+	//색상을 변경시킬 Server RPC 함수
+	UFUNCTION(Server, Reliable, WithValidation) //WithValidation 잘못된 색상을 만들면 꺼버리기
+	void ServerRPC_ChangeColor(const FLinearColor NewColor);
+
+	//색상 변경된 이벤트를 받아서 처리할 Client RPC 함수
+	//커넥션 필요 -> PlayerController 사용
+	UFUNCTION(Client, Unreliable )
+	void ClientRPC_ChangeColor(const FLinearColor NewColor);
+
+	//모든 유저들이 처리할 NetMulticast RPC함수
+	UFUNCTION(NetMulticast, Unreliable) 
+	void MultiRPC_ChangeColor(const FLinearColor NewColor);
+
 };

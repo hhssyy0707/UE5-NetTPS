@@ -17,6 +17,7 @@
 #include "Components/WidgetComponent.h"
 #include "HealthBar.h"
 #include "NetTPS.h"
+#include "Net/UnrealNetwork.h"// DOREPLIFETIME 
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -73,6 +74,9 @@ ANetTPSCharacter::ANetTPSCharacter()
 	HPUIComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBar"));
 	HPUIComp->SetupAttachment(GetMesh());
 
+	//액터 리플리케이션 사용하겠다.
+	bReplicates = true;
+	SetReplicates(true);
 }
 
 void ANetTPSCharacter::BeginPlay()
@@ -89,7 +93,7 @@ void ANetTPSCharacter::BeginPlay()
 		}
 	}
 
-
+	CurrentBulletCount = MaxBulletCount;
 	InitUIWidget();
 }
 
@@ -114,42 +118,45 @@ void ANetTPSCharacter::TakePistol(const FInputActionValue& Value)
 		return;
 	}
 
-	// 2. 총이 어딨는지 알아야한다.(월드에서 모두 가져오기)
-	TArray<AActor*> AllGunActors;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), AllGunActors);
-	// 2-1. 총인지 검사한다.
-	//for (int32 i = 0; i < AllGunActors.Num(); i++) {
-	//	if (AllGunActors[i]->GetActorNameOrLabel().Contains("BP_Pistol") == false) {
+	//대체
+	ServerRPC_TakePistol();
+
+	//// 2. 총이 어딨는지 알아야한다.(월드에서 모두 가져오기)
+	//TArray<AActor*> AllGunActors;
+	//UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), AllGunActors);
+	//// 2-1. 총인지 검사한다.
+	////for (int32 i = 0; i < AllGunActors.Num(); i++) {
+	////	if (AllGunActors[i]->GetActorNameOrLabel().Contains("BP_Pistol") == false) {
+	////		continue;
+	////	}
+	////}
+
+	//for (auto TempPistol : AllGunActors) {
+	//	if (TempPistol->GetName().Contains("BP_Pistol") == false) {
 	//		continue;
 	//	}
+
+
+	//	// 3. 총과의 거리
+	//	float DistanceToGun = FVector::Dist(GetActorLocation(), TempPistol->GetActorLocation());
+
+	//	// 4. 일정 범위 밖에 있을 때
+	//	if (DistanceToGun > MaxDistanceToGun) {
+	//		continue;
+	//	}
+
+	//	// 5. 총을 소유하고 싶다.
+	//	bHasPistol = true;
+	//	OwnedPistol = TempPistol;
+	//	OwnedPistol->SetOwner(this); // 사실 attach하면 안해줘도됨...
+	//	
+	//	// 6. 총을 잡고 싶다.
+	//	AttachPistol(OwnedPistol);
+	//	//AttachPistol(TempPistol);
+
+	//	// 7. 총을 잡았으니 Loop 종료
+	//	break;
 	//}
-
-	for (auto TempPistol : AllGunActors) {
-		if (TempPistol->GetName().Contains("BP_Pistol") == false) {
-			continue;
-		}
-
-
-		// 3. 총과의 거리
-		float DistanceToGun = FVector::Dist(GetActorLocation(), TempPistol->GetActorLocation());
-
-		// 4. 일정 범위 밖에 있을 때
-		if (DistanceToGun > MaxDistanceToGun) {
-			continue;
-		}
-
-		// 5. 총을 소유하고 싶다.
-		bHasPistol = true;
-		OwnedPistol = TempPistol;
-		OwnedPistol->SetOwner(this); // 사실 attach하면 안해줘도됨...
-		
-		// 6. 총을 잡고 싶다.
-		AttachPistol(OwnedPistol);
-		//AttachPistol(TempPistol);
-
-		// 7. 총을 잡았으니 Loop 종료
-		break;
-	}
 }
 
 void ANetTPSCharacter::AttachPistol(AActor* PistolActor)
@@ -177,54 +184,56 @@ void ANetTPSCharacter::Fire(const FInputActionValue& Value)
 		return;
 	}
 
-	// 총쏘기
-	FHitResult HitInfo;
-	FVector StartPos = FollowCamera->GetComponentLocation();
-	FVector EndPos = StartPos + FollowCamera->GetForwardVector()*10000.0f; 
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
+	ServerRPC_Fire();
 
-	bool bHit = GetWorld()->LineTraceSingleByChannel(HitInfo, StartPos, EndPos, ECC_Visibility, Params);
+	//// 총쏘기
+	//FHitResult HitInfo;
+	//FVector StartPos = FollowCamera->GetComponentLocation();
+	//FVector EndPos = StartPos + FollowCamera->GetForwardVector()*10000.0f; 
+	//FCollisionQueryParams Params;
+	//Params.AddIgnoredActor(this);
 
-	if (bHit) { // 충돌하면
-		//맞은 자리에 파티클 효과 재생
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), GunEffect, HitInfo.Location, FRotator());
+	//bool bHit = GetWorld()->LineTraceSingleByChannel(HitInfo, StartPos, EndPos, ECC_Visibility, Params);
+	
+	//if (bHit) { // 충돌하면
+	//	//맞은 자리에 파티클 효과 재생
+	//	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), GunEffect, HitInfo.Location, FRotator());
 
-		//맞은 대상이 상대방일 경우 데미지 처리
-		auto OtherPlayer = Cast<ANetTPSCharacter>(HitInfo.GetActor());
+	//	//맞은 대상이 상대방일 경우 데미지 처리
+	//	auto OtherPlayer = Cast<ANetTPSCharacter>(HitInfo.GetActor());
 
-		if (OtherPlayer) {
-			OtherPlayer->DamageProcess();
-		}
-	}
+	//	if (OtherPlayer) {
+	//		OtherPlayer->DamageProcess();
+	//	}
+	//}
 
-	//총쏘는 애니메이션 재생
-	auto Anim = Cast<UNetPlayerAnimInstance>(GetMesh()->GetAnimInstance());
-	Anim->PlayerFireAnimation();
-
-#pragma region AutoReload
-
-	// 총알 소모
-	//CurrentBulletCount--;
-	--CurrentBulletCount;
-	MainUI->PopBullet(CurrentBulletCount);
-
-	if (CurrentBulletCount <= 0) {
-		//MainUI->ReloadBullet();
-
-		FTimerHandle ReloadBulletTimer;
-
-		GetWorld()->GetTimerManager().SetTimer(ReloadBulletTimer, FTimerDelegate::CreateLambda([this]()->void {
-
-			// 총알 추가
-			for (int i = 0; i < MaxBulletCount; ++i) {
-				MainUI->AddBullet();
-			}
-			CurrentBulletCount = MaxBulletCount;
-
-			}), 2.0f, false);
-	}
-#pragma endregion
+	//	// 총알 소모
+	//	//CurrentBulletCount--;
+	//	--CurrentBulletCount;
+	//	MainUI->PopBullet(CurrentBulletCount);
+	
+	////총쏘는 애니메이션 재생
+	//auto Anim = Cast<UNetPlayerAnimInstance>(GetMesh()->GetAnimInstance());
+	//Anim->PlayerFireAnimation();
+	
+//#pragma region AutoReload
+//
+//	if (CurrentBulletCount <= 0) {
+//		//MainUI->ReloadBullet();
+//
+//		FTimerHandle ReloadBulletTimer;
+//
+//		GetWorld()->GetTimerManager().SetTimer(ReloadBulletTimer, FTimerDelegate::CreateLambda([this]()->void {
+//
+//			// 총알 추가
+//			for (int i = 0; i < MaxBulletCount; ++i) {
+//				MainUI->AddBullet();
+//			}
+//			CurrentBulletCount = MaxBulletCount;
+//
+//			}), 2.0f, false);
+//	}
+//#pragma endregion
 
 }
 
@@ -250,6 +259,15 @@ void ANetTPSCharacter::InitUIWidget()
 		for (int i = 0; i < MaxBulletCount; ++i) {
 			MainUI->AddBullet();
 		}
+	}
+}
+
+void ANetTPSCharacter::OnRep_CurrentBulletCount()
+{
+
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	if (MainUI) {
+		MainUI->PopBullet(CurrentBulletCount);
 	}
 }
 
@@ -321,9 +339,125 @@ void ANetTPSCharacter::PrintNetLog()
 	const FString ConnStr = GetNetConnection() != nullptr ? TEXT("Valid Connection") : TEXT("Invalid Connection");
 	const FString OwnerStr = GetOwner() != nullptr ? GetOwner()->GetName() : TEXT("No Owner");
 
-	const FString LogStr = FString::Printf(TEXT("Connection : %s \nOwner : %s\nLocal Role : %s, Remote Role : %s"), *ConnStr,*OwnerStr,*LOCALROLE, *REMOTEROLE);
+	const FString LogStr = FString::Printf(TEXT("Connection : %s \nOwner : %s\nLocal Role : %s, Remote Role : %s\n CurrentBulletCount : %d/%d,  "), *ConnStr,*OwnerStr,*LOCALROLE, *REMOTEROLE, CurrentBulletCount, MaxBulletCount);
 
 	DrawDebugString(GetWorld(), GetActorLocation(), LogStr, nullptr, FColor::Purple,0,true, 1);
+}
+
+void ANetTPSCharacter::ServerRPC_TakePistol_Implementation()
+{
+	// 2. 총이 어딨는지 알아야한다.(월드에서 모두 가져오기)
+	TArray<AActor*> AllGunActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), AllGunActors);
+	// 2-1. 총인지 검사한다.
+	//for (int32 i = 0; i < AllGunActors.Num(); i++) {
+	//	if (AllGunActors[i]->GetActorNameOrLabel().Contains("BP_Pistol") == false) {
+	//		continue;
+	//	}
+	//}
+
+	for (auto TempPistol : AllGunActors) {
+		if (TempPistol->GetName().Contains("BP_Pistol") == false) {
+			continue;
+		}
+
+
+		// 3. 총과의 거리
+		float DistanceToGun = FVector::Dist(GetActorLocation(), TempPistol->GetActorLocation());
+
+		// 4. 일정 범위 밖에 있을 때
+		if (DistanceToGun > MaxDistanceToGun) {
+			continue;
+		}
+
+		// 5. 총을 소유하고 싶다.
+		bHasPistol = true;
+		OwnedPistol = TempPistol;
+		OwnedPistol->SetOwner(this); // 사실 attach하면 안해줘도됨...
+		
+
+		//// 6. 총을 잡고 싶다.
+		//AttachPistol(OwnedPistol);
+		////AttachPistol(TempPistol);
+		//-> MultiRPC_TakePistol_Implementation로 이동
+		// 모든 클라이언트한테 전송
+		MultiRPC_TakePistol(OwnedPistol);
+		//AttachPistol(TempPistol);
+
+		// 7. 총을 잡았으니 Loop 종료
+		break;
+	}
+}
+
+void ANetTPSCharacter::MultiRPC_TakePistol_Implementation(AActor* PistolActor)
+{
+	AttachPistol(PistolActor);
+}
+
+void ANetTPSCharacter::ServerRPC_ReleasePistol_Implementation()
+{
+	//OwnedPistol ->PistolActor
+	//방어코드
+	if (OwnedPistol) {
+
+		MultiRPC_ReleasePistol(OwnedPistol);
+
+		bHasPistol = false;
+		OwnedPistol->SetOwner(nullptr);
+		OwnedPistol = nullptr;
+	}
+}
+
+void ANetTPSCharacter::MultiRPC_ReleasePistol_Implementation(AActor* PistolActor)
+{
+	DetachPistol(PistolActor);
+}
+
+void ANetTPSCharacter::ServerRPC_Fire_Implementation()
+{
+	FHitResult HitInfo;
+	FVector StartPos = FollowCamera->GetComponentLocation();
+	FVector EndPos = StartPos + FollowCamera->GetForwardVector() * 10000.0f;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitInfo, StartPos, EndPos, ECC_Visibility, Params);
+
+	if (bHit) {
+		
+		//맞은 대상이 상대방일 경우 데미지 처리
+		auto OtherPlayer = Cast<ANetTPSCharacter>(HitInfo.GetActor());
+
+		if (OtherPlayer) {
+			OtherPlayer->DamageProcess();
+		}
+	}
+	// 총알 소모
+	//CurrentBulletCount--;
+	--CurrentBulletCount;
+
+	MultiRPC_Fire(HitInfo, bHit);
+
+}
+
+void ANetTPSCharacter::MultiRPC_Fire_Implementation(FHitResult HitInfo, bool bHit)
+{
+	// 총쏘기
+
+	if (bHit) { // 충돌하면
+		//맞은 자리에 파티클 효과 재생
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), GunEffect, HitInfo.Location, FRotator());
+
+	}
+
+	//if (MainUI) {
+	//	MainUI->PopBullet(CurrentBulletCount);
+	//}
+
+	//총쏘는 애니메이션 재생
+	auto Anim = Cast<UNetPlayerAnimInstance>(GetMesh()->GetAnimInstance());
+	Anim->PlayerFireAnimation();
+
 }
 
 void ANetTPSCharacter::DetachPistol(AActor* PistolActor)
@@ -333,7 +467,7 @@ void ANetTPSCharacter::DetachPistol(AActor* PistolActor)
 	MeshComp -> DetachFromComponent(FDetachmentTransformRules::KeepRelativeTransform);
 
 
-	if (MainUI) {// 멀티
+	if (MainUI) {// 멀티용 방어코드
 
 		MainUI->ShowCrosshair(false);
 	}
@@ -345,15 +479,9 @@ void ANetTPSCharacter::ReleasePistol(const FInputActionValue& Value)
 		return;
 	}
 
-	//방어코드
-	if (OwnedPistol) {
+	//ServerRPC_ReleasePistol_Implementation()로 이동
+	ServerRPC_ReleasePistol();
 
-		DetachPistol(OwnedPistol);
-
-		bHasPistol = false;
-		OwnedPistol->SetOwner(nullptr);
-		OwnedPistol = nullptr;
-	}
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -428,4 +556,15 @@ void ANetTPSCharacter::Look(const FInputActionValue& Value)
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
 	}
+}
+
+void ANetTPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const 
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ANetTPSCharacter, bHasPistol);
+	//DOREPLIFETIME(ANetTPSCharacter, MaxBulletCount);
+	DOREPLIFETIME(ANetTPSCharacter, CurrentBulletCount);
+	
+
 }
