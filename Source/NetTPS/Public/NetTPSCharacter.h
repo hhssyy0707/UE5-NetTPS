@@ -130,14 +130,14 @@ public:
 	void InitUIWidget();
 
 	UPROPERTY(EditAnywhere, Category = "Bullet")
-	int32 MaxBulletCount = 15;
+	int32 MaxBulletCount = 10;
 	
-	UPROPERTY(ReplicatedUsing = OnRep_CurrentBulletCount)
+	//UPROPERTY(ReplicatedUsing = OnRep_CurrentBulletCount)
 	//int32 CurrentBulletCount = MaxBulletCount; // 초기화
 	int32 CurrentBulletCount; // 초기화
 	
-	UFUNCTION()
-	void OnRep_CurrentBulletCount();
+	//FUNCTION()
+	//oid OnRep_CurrentBulletCount();
 
 	//재장전
 	//Input Action
@@ -156,8 +156,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PlayerHP")
 	float MaxHP = 10;
 
-	UPROPERTY(EditDefaultsOnly, Category = "PlayerHP")
+	//UPROPERTY(EditDefaultsOnly, Category = "PlayerHP")
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP)
 	float CurrentHP = MaxHP;
+
+	UFUNCTION()
+	void OnRep_CurrentHP();
 
 	//언리얼에서만 가능한 코드
 	__declspec(property(get=GetHP, put = SetHP))
@@ -202,8 +206,15 @@ public:
 	void ServerRPC_Fire();
 	
 	UFUNCTION(NetMulticast , Reliable)
-	void MultiRPC_Fire(FHitResult HitInfo, bool bHit);
+	void MultiRPC_Fire(const FHitResult& HitInfo, bool bHit, const int NewBulletCount);
 
+	
+	//총 재장전
+	UFUNCTION(Server , Reliable)
+	void ServerRPC_Reload();
+	
+	UFUNCTION(Client , Reliable)
+	void ClientRPC_Reload();
 
 };
 

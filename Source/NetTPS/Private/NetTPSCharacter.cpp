@@ -259,17 +259,22 @@ void ANetTPSCharacter::InitUIWidget()
 		for (int i = 0; i < MaxBulletCount; ++i) {
 			MainUI->AddBullet();
 		}
+
+		if (HPUIComp) {
+			HPUIComp->SetVisibility(false);
+		}
 	}
 }
 
-void ANetTPSCharacter::OnRep_CurrentBulletCount()
-{
-
-	if (GetLocalRole() == ROLE_AutonomousProxy)
-	if (MainUI) {
-		MainUI->PopBullet(CurrentBulletCount);
-	}
-}
+//void ANetTPSCharacter::OnRep_CurrentBulletCount()
+//{
+//
+//	UE_LOG(LogTemp, Warning, TEXT("OnRep_CurrentBulletCount After : %d/%d"), CurrentBulletCount, MaxBulletCount);
+//	if (GetLocalRole() == ROLE_AutonomousProxy)
+//	if (MainUI) {
+//		MainUI->PopBullet(CurrentBulletCount);
+//	}
+//}
 
 void ANetTPSCharacter::ReloadPistol(const FInputActionValue& Value)
 {
@@ -277,6 +282,7 @@ void ANetTPSCharacter::ReloadPistol(const FInputActionValue& Value)
 		return;
 	}
 
+	//애니메이션 클라에서 발생 -> 굳이 서버로 옮길 필요없음
 	auto AnimInst = Cast<UNetPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 	AnimInst->PlayReloadAnimation();
 
@@ -285,18 +291,36 @@ void ANetTPSCharacter::ReloadPistol(const FInputActionValue& Value)
 
 void ANetTPSCharacter::InitBulletUI()
 {
-	
-	MainUI->RemoveAllBullets();
 
-	// 총알 개수 초기화
-	CurrentBulletCount = MaxBulletCount;
+	ServerRPC_Reload();
 
-	for (int i = 0; i < MaxBulletCount; i++) {
-		MainUI->AddBullet();
+	//MainUI->RemoveAllBullets();
+
+	//UE_LOG(LogTemp, Warning,TEXT("Before : %d/%d"), CurrentBulletCount, MaxBulletCount);
+	//// 총알 개수 초기화
+	//CurrentBulletCount = MaxBulletCount;
+
+	//UE_LOG(LogTemp, Warning, TEXT("After : %d/%d"), CurrentBulletCount, MaxBulletCount);
+	//for (int i = 0; i < MaxBulletCount; i++) {
+	//	MainUI->AddBullet();
+	//}
+
+	//IsReloading = false;
+
+}
+
+void ANetTPSCharacter::OnRep_CurrentHP()
+{
+
+	float HPPercent = CurrentHP / MaxHP;
+
+	if (MainUI) {
+		MainUI->PB_HPValue = HPPercent;
 	}
-
-	IsReloading = false;
-
+	else {
+		auto HPUI = Cast<UHealthBar>(HPUIComp->GetWidget());
+		HPUI->PB_HPValue = HPPercent;
+	}
 }
 
 float ANetTPSCharacter::GetHP()
@@ -307,6 +331,9 @@ float ANetTPSCharacter::GetHP()
 void ANetTPSCharacter::SetHP(float Value)
 {
 	CurrentHP = Value;
+	
+	//Tick으로 이동 -> Onrep_HP로 이동
+	/*
 	float HPPercent = CurrentHP / MaxHP;
 	
 	if (MainUI) {
@@ -315,7 +342,12 @@ void ANetTPSCharacter::SetHP(float Value)
 	else {
 		auto HPUI = Cast<UHealthBar>(HPUIComp->GetWidget());
 		HPUI->PB_HPValue = HPPercent;
-	}
+	}*/
+
+	//240116
+	//OnRep은 서버X 클라에서만 호출됨
+	// 서버 HP가 줄어들지 않아 여기서 강제 OnRep 실행해주기
+	OnRep_CurrentHP();
 }
 
 void ANetTPSCharacter::DamageProcess()
@@ -331,7 +363,35 @@ void ANetTPSCharacter::DamageProcess()
 void ANetTPSCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
 	PrintNetLog();
+
+	//OnRep_RCurrentHP()로 이동
+	/*float HPPercent = CurrentHP / MaxHP;
+
+	if (MainUI) {
+		MainUI->PB_HPValue = HPPercent;
+	}
+	else {
+		auto HPUI = Cast<UHealthBar>(HPUIComp->GetWidget());
+		HPUI->PB_HPValue = HPPercent;
+	}*/
+
+
+	//HP UI Billboarding 처리
+	//빌보딩 : 항상 앞으로 보이게 하는 것
+	if (HPUIComp && HPUIComp->GetVisibleFlag()) {
+
+		// 플레이어의 카메라 위치 정보를 가져온다
+		FVector CamLoc = UGameplayStatics::GetPlayerCameraManager(GetWorld(),0)->GetCameraLocation();
+		//다른방법 : GetWorld()->GetFirstPlayerController()->GetPawn() Cast 후 
+
+		FVector Direction = CamLoc - HPUIComp->GetComponentLocation(); //월드좌표 기준으로 가져온다. 컴포넌트 로케이션 사용 이유
+		Direction.Z = 0;
+
+		HPUIComp->SetWorldRotation(Direction.GetSafeNormal().ToOrientationRotator());
+	}
+
 }
 
 void ANetTPSCharacter::PrintNetLog()
@@ -436,28 +496,57 @@ void ANetTPSCharacter::ServerRPC_Fire_Implementation()
 	//CurrentBulletCount--;
 	--CurrentBulletCount;
 
-	MultiRPC_Fire(HitInfo, bHit);
+	MultiRPC_Fire(HitInfo, bHit, CurrentBulletCount);
 
 }
 
-void ANetTPSCharacter::MultiRPC_Fire_Implementation(FHitResult HitInfo, bool bHit)
+void ANetTPSCharacter::MultiRPC_Fire_Implementation(const FHitResult& HitInfo, bool bHit, const int NewBulletCount)
 {
-	// 총쏘기
+	// OnRep에서는 문제없었을것
+	// 클라에서 따로 바뀐 총알수를 동기화해줘야한다.
+	CurrentBulletCount = NewBulletCount;
 
+	// 총쏘기
 	if (bHit) { // 충돌하면
 		//맞은 자리에 파티클 효과 재생
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), GunEffect, HitInfo.Location, FRotator());
 
 	}
 
-	//if (MainUI) {
-	//	MainUI->PopBullet(CurrentBulletCount);
-	//}
+	//방법 2가지 
+	//1. Onrep_CurrentBulletCount사용
+	//2. MultiRPC_Fire에서 UI만 업데이트
+	if (MainUI) {
+		MainUI->PopBullet(NewBulletCount);
+	}
 
 	//총쏘는 애니메이션 재생
 	auto Anim = Cast<UNetPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 	Anim->PlayerFireAnimation();
 
+}
+
+void ANetTPSCharacter::ServerRPC_Reload_Implementation()
+{
+	//총알 개수 동기화
+	CurrentBulletCount = MaxBulletCount;
+	//Client RPC Call
+	ClientRPC_Reload();
+}
+
+void ANetTPSCharacter::ClientRPC_Reload_Implementation()
+{
+	// 총알 개수 초기화
+	CurrentBulletCount = MaxBulletCount;
+	if (MainUI) {
+
+		MainUI->RemoveAllBullets();
+		for (int i = 0; i < MaxBulletCount; i++) {
+			MainUI->AddBullet();
+		}
+	}
+
+	IsReloading = false;
 }
 
 void ANetTPSCharacter::DetachPistol(AActor* PistolActor)
@@ -563,8 +652,8 @@ void ANetTPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ANetTPSCharacter, bHasPistol);
-	//DOREPLIFETIME(ANetTPSCharacter, MaxBulletCount);
-	DOREPLIFETIME(ANetTPSCharacter, CurrentBulletCount);
+	//DOREPLIFETIME(ANetTPSCharacter, CurrentBulletCount);
+	DOREPLIFETIME(ANetTPSCharacter, CurrentHP);
 	
 
 }
