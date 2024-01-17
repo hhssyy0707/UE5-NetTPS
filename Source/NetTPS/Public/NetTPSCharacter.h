@@ -173,11 +173,19 @@ public:
 	class UWidgetComponent* HPUIComp;
 	//class UUserWidget* HPUIComp;
 
+	//피격처리 함수
 	void DamageProcess();
 
-	//죽음
-	public:
+	//vlrurtl 카메라 쉐이크
+	UPROPERTY(EditDefaultsOnly, Category = "Damage")
+	TSubclassOf<class UCameraShakeBase> DamageCameraShake;
+
+	//죽음 처리
+public:
+	//UPROPERTY(Replicated)
 	bool IsDead = false;
+
+	void DieProcess();
 
 public:
 	virtual void Tick( float DeltaSeconds ) override;

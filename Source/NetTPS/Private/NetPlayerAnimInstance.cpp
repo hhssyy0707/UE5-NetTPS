@@ -57,3 +57,14 @@ void UNetPlayerAnimInstance::AnimNotify_OnReloadFinish()
 	//애니메이션이 끝난 후 함수 호출해주기 위해( 동작이 끝나고 재장전이 돼야한다.)
 	Player->InitBulletUI();
 }
+
+void UNetPlayerAnimInstance::AnimNotify_DieEnd()
+{
+	
+	//죽는 애니메이션이 끝나고 DieProcess 호출
+	if (Player && Player->IsLocallyControlled()) { //IsLocallyControlled 죽은애만 DieProcess 동작하도록
+		Player->DieProcess();
+	}
+
+
+}

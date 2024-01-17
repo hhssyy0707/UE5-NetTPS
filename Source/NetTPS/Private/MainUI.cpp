@@ -35,3 +35,10 @@ void UMainUI::RemoveAllBullets()
 
 	BulletPanel->ClearChildren();
 }
+
+void UMainUI::PlayDamageAnimation()
+{
+	// 피격 시 애니메이션 재생
+	PlayAnimation(DamageUIAnim);
+
+}

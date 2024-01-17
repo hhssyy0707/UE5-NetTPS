@@ -39,4 +39,21 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "HP")
 	float PB_HPValue = 1.0f;
 
+	UPROPERTY(EditDefaultsOnly, meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* DamageUIAnim;
+	//피격처리 애니메이션 재생 함수
+	void PlayDamageAnimation();
+
+	//죽음UI
+public:
+	UPROPERTY(BlueprintReadWrite, Category = "UI", meta = (BindWidget))
+	class UHorizontalBox* HB_GameOverUI;
+	
+	UPROPERTY(BlueprintReadWrite, Category = "UI", meta = (BindWidget))
+	class UButton* BTN_Retry;
+
+	UPROPERTY(BlueprintReadWrite, Category = "UI", meta = (BindWidget))
+	class UButton* BTN_Exit;
+
+
 };

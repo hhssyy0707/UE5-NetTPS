@@ -18,6 +18,7 @@
 #include "HealthBar.h"
 #include "NetTPS.h"
 #include "Net/UnrealNetwork.h"// DOREPLIFETIME 
+#include "Components/HorizontalBox.h"//HorizontalBox
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -113,7 +114,7 @@ void ANetTPSCharacter::TakePistol(const FInputActionValue& Value)
 
 	// 1. 총을 소유하고 있지 않을 때
 	// 1-1. 소유하면 아무것도 하지 않는다.
-	if (bHasPistol == true)
+	if (bHasPistol == true || IsDead)
 	{
 		return;
 	}
@@ -175,7 +176,7 @@ void ANetTPSCharacter::AttachPistol(AActor* PistolActor)
 void ANetTPSCharacter::Fire(const FInputActionValue& Value)
 {
 	//총을 소유하고 있지 않다면 처리하지 않는다.
-	if (bHasPistol == false || IsReloading) {
+	if (bHasPistol == false || CurrentBulletCount <= 0 || IsReloading || IsDead) {
 		return;
 	}
 
@@ -311,11 +312,29 @@ void ANetTPSCharacter::InitBulletUI()
 
 void ANetTPSCharacter::OnRep_CurrentHP()
 {
+	// 죽음처리
+	if (HP <= 0) {
+		IsDead = true;
+
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetCharacterMovement()->DisableMovement();
+		//죽었으니까 총은 놓자
+		ReleasePistol(FInputActionValue());
+	}
 
 	float HPPercent = CurrentHP / MaxHP;
 
-	if (MainUI) {
+	if (MainUI) { // 메인 플레이어 일때만
+	//if(IsLocallyControlled()){
 		MainUI->PB_HPValue = HPPercent;
+
+		// 피격 시 애니메이션 및 이펙트
+		MainUI->PlayDamageAnimation();
+		if (DamageCameraShake) {
+			auto PC = Cast<APlayerController>(Controller);
+			PC->ClientStartCameraShake(DamageCameraShake);
+		}
+
 	}
 	else {
 		auto HPUI = Cast<UHealthBar>(HPUIComp->GetWidget());
@@ -354,10 +373,25 @@ void ANetTPSCharacter::DamageProcess()
 {
 	HP--;
 
-	// 죽음처리
-	if (HP <= 0) {
-		IsDead = true;
-	}
+	// OnRep_CurrentHP로 이동
+	//// 죽음처리
+	//if (HP <= 0) {
+	//	IsDead = true;
+	//}
+}
+
+void ANetTPSCharacter::DieProcess()
+{
+	//애니메이션 끝난 후 호출예정
+	//클라이언트에게만 보이는 시각적 효과 -> OnRep_CurrentHP
+	//BP_ThirdPerson에서 Saturation 켜줌
+	GetFollowCamera()->PostProcessSettings.ColorSaturation = FVector4(0,0,0,1);
+
+	auto PC = Cast<APlayerController>(Controller);
+	PC->SetShowMouseCursor(true);
+
+	//DieUI표시
+	MainUI->HB_GameOverUI->SetVisibility(ESlateVisibility::Visible);
 }
 
 void ANetTPSCharacter::Tick(float DeltaSeconds)
@@ -564,7 +598,7 @@ void ANetTPSCharacter::DetachPistol(AActor* PistolActor)
 
 void ANetTPSCharacter::ReleasePistol(const FInputActionValue& Value)
 {
-	if (bHasPistol == false || IsReloading) {
+	if (bHasPistol == false || IsReloading || IsLocallyControlled() == false) {
 		return;
 	}
 
@@ -654,6 +688,7 @@ void ANetTPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ANetTPSCharacter, bHasPistol);
 	//DOREPLIFETIME(ANetTPSCharacter, CurrentBulletCount);
 	DOREPLIFETIME(ANetTPSCharacter, CurrentHP);
+	//DOREPLIFETIME(ANetTPSCharacter, IsDead);
 	
 
 }
