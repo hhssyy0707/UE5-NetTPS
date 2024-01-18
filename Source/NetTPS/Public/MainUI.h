@@ -55,5 +55,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "UI", meta = (BindWidget))
 	class UButton* BTN_Exit;
 
+public:
+	virtual void NativeConstruct() override;
 
+	//리트라이 버튼 눌렀을 때 실행되는 함수
+	UFUNCTION()
+	void OnRetry();
 };

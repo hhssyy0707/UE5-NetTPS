@@ -60,6 +60,8 @@ protected:
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	virtual void PossessedBy(AController* NewController) override;
 	
 	// To add mapping context
 	virtual void BeginPlay();
@@ -121,9 +123,9 @@ public:
 
 	//∏ﬁ¿Œ UI
 public:
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UMainUI> MainUIWidget;
-	
+	/*UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UMainUI> MainUIWidget;*/
+
 	UPROPERTY()
 	class UMainUI* MainUI;
 

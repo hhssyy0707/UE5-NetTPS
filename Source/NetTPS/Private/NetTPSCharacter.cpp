@@ -19,6 +19,7 @@
 #include "NetTPS.h"
 #include "Net/UnrealNetwork.h"// DOREPLIFETIME 
 #include "Components/HorizontalBox.h"//HorizontalBox
+#include "NetPlayerController.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -82,6 +83,7 @@ ANetTPSCharacter::ANetTPSCharacter()
 
 void ANetTPSCharacter::BeginPlay()
 {
+	PRINTLOG(TEXT("ANetTPSCharacter::BeginPlay() Begin, Controller : %s"), Controller? TEXT("Valid"): TEXT("Invalid"));
 	// Call the base class  
 	Super::BeginPlay();
 
@@ -95,7 +97,20 @@ void ANetTPSCharacter::BeginPlay()
 	}
 
 	CurrentBulletCount = MaxBulletCount;
-	InitUIWidget();
+
+	// Client 창에서 실행되는 코드여야 한다.
+	//내가 제어중이고 , Client인지 확인 (MainUI 세팅하기 위해)
+	if (IsLocallyControlled() && HasAuthority() == false) {
+		InitUIWidget();
+	}
+
+	//UI 머리위에 다시 뜨는 이유 Controller 못찾아서 
+	// -> PossessedBy에서 UI 초기화를 해줘야한다.
+	//BeginPlay는 서버, 클라 둘다 실행됨
+
+
+	//PRINTLOG(TEXT("ANetTPSCharacter::BeginPlay() End"));
+	PRINTLOG(TEXT("End, Controller : %s"), Controller ? TEXT("Valid") : TEXT("Invalid"));
 }
 
 void ANetTPSCharacter::TakePistol(const FInputActionValue& Value)
@@ -242,16 +257,25 @@ void ANetTPSCharacter::InitUIWidget()
 {	
 
 	//Player 아니면 처리하지 않도록 하자
-	auto PC = Cast<APlayerController>(Controller);
+	auto PC = Cast<ANetPlayerController>(Controller);
 	if (PC == nullptr) {
 		return;
 	}
 
 
-	if (MainUIWidget) {
-		MainUI = Cast<UMainUI>(CreateWidget(GetWorld(), MainUIWidget));
-		MainUI->AddToViewport();
+	if (PC->MainUIWidget) {
+		//MainUI가 없을 때만 해주자
+		if (PC->MainUI == nullptr) {
+
+			PC->MainUI = Cast<UMainUI>(CreateWidget(GetWorld(), PC->MainUIWidget));
+			
+			PC->MainUI->AddToViewport();
+		}
+		MainUI = PC->MainUI;
 		MainUI->ShowCrosshair(false);
+
+		// UI 초기화하기전에 총알 모두 제거하기
+		MainUI->RemoveAllBullets();
 
 		// 총알 UI 세팅
 		CurrentBulletCount = MaxBulletCount;
@@ -643,6 +667,24 @@ void ANetTPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	{
 		UE_LOG(LogTemplateCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
 	}
+}
+
+void ANetTPSCharacter::PossessedBy(AController* NewController)
+{
+	//PRINTLOG(TEXT("Begin"));
+	PRINTLOG(TEXT("Begin, Controller : %s"), Controller ? TEXT("Valid") : TEXT("Invalid"));
+	Super::PossessedBy(NewController);
+	//PRINTLOG(TEXT("End"));
+
+
+	//내가 제어 중인지 (메인 플레이어인지) 체크
+	if (IsLocallyControlled()) {
+		
+		// UI 초기화
+		InitUIWidget();
+	}
+
+	PRINTLOG(TEXT("End, Controller : %s"), Controller ? TEXT("Valid") : TEXT("Invalid"));
 }
 
 void ANetTPSCharacter::Move(const FInputActionValue& Value)
