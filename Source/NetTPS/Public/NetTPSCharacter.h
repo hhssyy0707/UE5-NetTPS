@@ -131,6 +131,13 @@ public:
 
 	void InitUIWidget();
 
+	//클라에서만 호출
+	// 서버에만 있는 데이터를 클라에 초기화(동기화 역할)
+	virtual void PostNetInit() override;
+	//SetupPlayerInputComponent 그거보다 빨리 실행되는 라이프사이클 펑션임
+	// 호출 순서를 잘 알아야 세팅, 초기화, 설정값을 잘 해줄 수 있다.
+	
+
 	UPROPERTY(EditAnywhere, Category = "Bullet")
 	int32 MaxBulletCount = 10;
 	

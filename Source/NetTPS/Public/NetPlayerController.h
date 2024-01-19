@@ -27,6 +27,11 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerRPC_RespawnPlayer();
 
+	// 관전자 Server RPC
+	UFUNCTION(Server, UnReliable)
+	void ServerRPC_ChangeToSpectator();
+
+
 	//Main UI 생성(단한번만 생성하기 위해 PlayerController로 이동)
 public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")

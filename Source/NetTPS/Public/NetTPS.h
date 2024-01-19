@@ -19,5 +19,5 @@ DECLARE_LOG_CATEGORY_EXTERN(NetLog, Log, All);
 //정보 출력하는 함수 매크로
 //가변인자 ...
 #define  PRINTLOG(fmt, ... ) \
-UE_LOG(NetLog, Warning, TEXT("%s %s"), *CALLINFO, *FString::Printf(fmt, ##__VA_ARGS__))
+UE_LOG(NetLog, Warning, TEXT("[%s]%s %s"),NETMODE, *CALLINFO, *FString::Printf(fmt, ##__VA_ARGS__))
 //UE_LOG(LogTemp, Warning, TEXT("[%s]%s %s"), NETMODE , *CALLINFO, *FString::Printf(fmt, ##__VA_ARGS__))

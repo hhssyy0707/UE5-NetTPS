@@ -68,7 +68,9 @@ void UMainUI::OnRetry()
 	if (PC) {
 		PC->SetShowMouseCursor(false);
 		//3. Server¿¡ Respawn ¿äÃ»
-		PC-> ServerRPC_RespawnPlayer();
+		//PC-> ServerRPC_RespawnPlayer();
+		PC-> ServerRPC_ChangeToSpectator();
+
 	}
 
 

@@ -255,7 +255,6 @@ void ANetTPSCharacter::Fire(const FInputActionValue& Value)
 
 void ANetTPSCharacter::InitUIWidget()
 {	
-
 	//Player 아니면 처리하지 않도록 하자
 	auto PC = Cast<ANetPlayerController>(Controller);
 	if (PC == nullptr) {
@@ -274,6 +273,12 @@ void ANetTPSCharacter::InitUIWidget()
 		MainUI = PC->MainUI;
 		MainUI->ShowCrosshair(false);
 
+		//리스폰 시 체력 초기화 
+		CurrentHP = MaxHP;
+		float Percent = CurrentHP / MaxHP;
+		MainUI->PB_HPValue = Percent;
+
+
 		// UI 초기화하기전에 총알 모두 제거하기
 		MainUI->RemoveAllBullets();
 
@@ -289,6 +294,16 @@ void ANetTPSCharacter::InitUIWidget()
 			HPUIComp->SetVisibility(false);
 		}
 	}
+}
+
+void ANetTPSCharacter::PostNetInit()
+{
+	PRINTLOG(TEXT("Begin"));
+
+	Super::PostNetInit();
+
+	PRINTLOG(TEXT("End"));
+
 }
 
 //void ANetTPSCharacter::OnRep_CurrentBulletCount()
@@ -353,9 +368,11 @@ void ANetTPSCharacter::OnRep_CurrentHP()
 		MainUI->PB_HPValue = HPPercent;
 
 		// 피격 시 애니메이션 및 이펙트
+
 		MainUI->PlayDamageAnimation();
 		if (DamageCameraShake) {
-			auto PC = Cast<APlayerController>(Controller);
+			//auto PC = Cast<APlayerController>(Controller);
+			auto PC = Cast<ANetPlayerController>(Controller);
 			PC->ClientStartCameraShake(DamageCameraShake);
 		}
 
