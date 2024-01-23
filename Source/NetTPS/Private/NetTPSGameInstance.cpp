@@ -56,7 +56,7 @@ void UNetTPSGameInstance::CreateMySession(FString roomName, int32 playerCount)
 	sessionSettings.bAllowJoinInProgress = true;
 	sessionSettings.bAllowJoinViaPresence = true;
 
-	//6. 최대 허용인원수
+	//6. 최대 허용인원수 설정 ( 현재가능입장수에 최대로 설정하고싶은 변수를 넣는다)
 	sessionSettings.NumPublicConnections = playerCount;
 
 	//7. 커스텀 옵션 ex. 방이름
@@ -120,4 +120,50 @@ void UNetTPSGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 	auto results = sessionSearch->SearchResults;
 	PRINTLOG(TEXT("Search Result Count %d"), results.Num());
 
+	for (int i = 0; i < results.Num(); i++) {
+		auto sr = results[i];
+		if (sr.IsValid() == false) {
+			continue;
+
+		}
+		//1.방이름
+		//2.호스트이름
+		//3.플레이어수(최대가능수 - 현재입장가능수)
+		//4.핑정보
+
+		/*
+		FString roomName;
+		FString hostName1;
+		sr.Session.SessionSettings.Get(FName("ROOM_NAME"), roomName);
+		sr.Session.SessionSettings.Get(FName("HOST_NAME"), hostName1);
+		//PC 소유자 이름
+		FString OwnerName = sr.Session.OwningUserName;
+		//플레이어수
+		int32 maxPlayerCount = sr.Session.NumOpenPublicConnections;
+		int32 currentPlayerCount = maxPlayerCount - sr.Session.NumOpenPublicConnections;
+		//핑정보
+		int32 pingSpeed = sr.PingInMs; // 스팀매치일때는 9999 (local network에서는 정상적으로 들어옴)
+		
+		PRINTLOG(TEXT("%s : %s(%s) - (%d/%d), %d ms"), *roomName, *hostName1, *OwnerName,currentPlayerCount,maxPlayerCount,pingSpeed);
+		*/
+
+
+		FSessionInfo sessionInfo;
+		sessionInfo.index = i;
+
+		sr.Session.SessionSettings.Get(FName("ROOM_NAME"), sessionInfo.roomName);
+		sr.Session.SessionSettings.Get(FName("HOST_NAME"), sessionInfo.hostName);
+
+		//플레이어수
+		int32 maxPlayerCount = sr.Session.NumOpenPublicConnections;
+		int32 currentPlayerCount = maxPlayerCount - sr.Session.NumOpenPublicConnections;
+		sessionInfo.playerCount = FString::Printf(TEXT("(%d/%d)"),currentPlayerCount, maxPlayerCount);
+		
+		//핑정보
+		sessionInfo.pingSpeed = sr.PingInMs; // 스팀매치일때는 9999 (local network에서는 정상적으로 들어옴)
+
+		PRINTLOG(TEXT("%s"),*sessionInfo.ToString());
+
+
+	}
 }

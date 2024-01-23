@@ -8,6 +8,31 @@
 
 #include "NetTPSGameInstance.generated.h"
 
+//방정보(세션) 기록할 구조체
+USTRUCT(BlueprintType)
+struct FSessionInfo {
+	
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly)
+	FString roomName;
+	UPROPERTY(BlueprintReadOnly)
+	FString hostName;
+	UPROPERTY(BlueprintReadOnly)
+	FString playerCount;
+	UPROPERTY(BlueprintReadOnly)
+	int32 pingSpeed;
+	UPROPERTY(BlueprintReadOnly)
+	int32 index;
+
+	//인라인함수 선언
+	inline FString ToString(){
+		return FString::Printf(TEXT("[%d] %s : %s - %s, %d ms"), index, *roomName, *hostName, *playerCount, pingSpeed);
+	}
+
+
+};
+
 /**
  * 
  */
