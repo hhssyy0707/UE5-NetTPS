@@ -5,5 +5,6 @@
 
 ALobbyGameMode::ALobbyGameMode()
 {
-	bUseSeamlessTravel = true;
+	//240124 주석으로 돌리자
+	//bUseSeamlessTravel = true;
 }

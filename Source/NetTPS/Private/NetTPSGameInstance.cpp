@@ -23,11 +23,13 @@ void UNetTPSGameInstance::Init()
 		SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(this, &UNetTPSGameInstance::OnCreateSessionComplete);
 		//검색 콜백
 		SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UNetTPSGameInstance::OnFindSessionsComplete);
+
+		SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UNetTPSGameInstance::OnJoinSessionComplete);
 	}
 
-	FTimerHandle handle;
+	//FTimerHandle handle;
 	//GetWorld()->GetTimerManager().SetTimer(handle, FTimerDelegate::CreateLambda([&] {CreateMySession(hostName, 10); }), 2, false);
-	GetWorld()->GetTimerManager().SetTimer(handle, FTimerDelegate::CreateLambda([&] {FindOtherSessions(); }), 2, false);
+	//GetWorld()->GetTimerManager().SetTimer(handle, FTimerDelegate::CreateLambda([&] {FindOtherSessions(); }), 2, false);
 
 }
 
@@ -57,6 +59,7 @@ void UNetTPSGameInstance::CreateMySession(FString roomName, int32 playerCount)
 	sessionSettings.bAllowJoinViaPresence = true;
 
 	//6. 최대 허용인원수 설정 ( 현재가능입장수에 최대로 설정하고싶은 변수를 넣는다)
+
 	sessionSettings.NumPublicConnections = playerCount;
 
 	//7. 커스텀 옵션 ex. 방이름
@@ -76,7 +79,8 @@ void UNetTPSGameInstance::CreateMySession(FString roomName, int32 playerCount)
 	// 참조연산자 사용
 	SessionInterface->CreateSession(*netID, FName(hostName), sessionSettings);
 
-	
+	//야 모두 방검색중이다는 걸 알아라~
+	onSearchState.Broadcast(true);
 
 
 
@@ -85,6 +89,13 @@ void UNetTPSGameInstance::CreateMySession(FString roomName, int32 playerCount)
 void UNetTPSGameInstance::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
 {
 	PRINTLOG(TEXT("Create Session Start : %s"), *SessionName.ToString(), bWasSuccessful);
+
+	//방에 들어가도록 처리하자
+	if (bWasSuccessful) {
+		//GetWorld()->ServerTravel(TEXT("/Script/Engine.World'/Game/Net/Maps/BattleMap.BattleMap'"));
+
+		GetWorld()->ServerTravel(TEXT("/Game/Net/Maps/BattleMap?listen"));
+	}
 }
 
 void UNetTPSGameInstance::FindOtherSessions()
@@ -105,13 +116,16 @@ void UNetTPSGameInstance::FindOtherSessions()
 	SessionInterface->FindSessions(0, sessionSearch.ToSharedRef());
 	//0 아무거나?
 	// 특이한 방? id 값 입력
+	
 
+	onSearchState.Broadcast(true);
 }
 
 void UNetTPSGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 {
 	//찾기 실패 시
 	if (bWasSuccessful == false) {
+	onSearchState.Broadcast(false);
 		PRINTLOG(TEXT("Session search failed..."));
 		return;
 	}
@@ -164,6 +178,53 @@ void UNetTPSGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 
 		PRINTLOG(TEXT("%s"),*sessionInfo.ToString());
 
+		//240124 UI 슬롯 추가
+		//여기서 이때 슬롯 추가 필요 -> LoginWidget(level blueprint에서 생성하고 있음)
+		onSearchCompleted.Broadcast(sessionInfo);
+
+
 
 	}
+
+	//방목록을 보려면 방을 나와야함
+	//SessionInterface->DestroySession();
+
+	onSearchState.Broadcast(false);
+
+}
+
+void UNetTPSGameInstance::JoinSelectedSession(int32 roomIndex)
+{
+	auto sr = sessionSearch->SearchResults[roomIndex];
+
+	SessionInterface->JoinSession(0,FName(hostName), sr);//세션세팅에 들어가있는 넷유저아이디 써도되고 혹은 0
+
+
+}
+
+void UNetTPSGameInstance::OnJoinSessionComplete(FName sessionName, EOnJoinSessionCompleteResult::Type result)
+{
+	//Client가 방으로 들어가야한다.
+	//->Client Travel 
+	if (result==EOnJoinSessionCompleteResult::Success) {
+		//서버가 만든 세션의 url 필요
+		FString url;
+		//url이 참조로돼 있어서여기 변수에 담긴다
+		SessionInterface->GetResolvedConnectString(sessionName, url);
+
+		//240124 추가
+		PRINTLOG(TEXT("Client Travel Url : %s"), *url); // 포트번호가 0이면 StandAlone이다 -> lobbyGameMode.h에서 bUseSeamlessTravel 주석처리할 것
+
+		if(url.IsEmpty() == false)
+		{
+			//url이 있으면 방으로 들어간다.
+			auto PC = GetWorld()->GetFirstPlayerController();
+			PC->ClientTravel(url, ETravelType::TRAVEL_Absolute); //전에 있었던 로그인 정보등을 날리고 새로 들어갈 수 있음 , Relative는 몇 가지 정보를 갖고 들어갈 수 있음. 팀이나 캐릭터 정보같은 건
+
+		}
+	}
+	else {
+		PRINTLOG(TEXT("Join Session Failed...%d"), result);
+	}
+
 }

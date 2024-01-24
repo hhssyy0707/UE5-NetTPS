@@ -33,6 +33,19 @@ struct FSessionInfo {
 
 };
 
+
+//세션 검색이 끝났을 때 호출될 델리게이트(발생자, CALLBACK FUNCTION, BINDING)
+//DYNAMIC -> BLUEPRINT에서도 사용가능
+//MULTICAST -> 여러명에게 동시에
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSearchSignature, const FSessionInfo&, sessionInfo);
+
+//세션 검색상태 델리게이ㅡ
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSearchStateSignature, bool, bIsSearching);
+
+
+
+
+
 /**
  * 
  */
@@ -72,4 +85,19 @@ TSharedPtr<FOnlineSessionSearch> sessionSearch; //UProperty를 쓸 수 없음 -> 스마
 void FindOtherSessions();
 
 void OnFindSessionsComplete(bool bWasSuccessful);
+
+
+//방찾기 완료되면 콜백을 등록할 델리게이트 선언해볼게
+FSearchSignature onSearchCompleted;
+
+
+//방찾기상태 콜백 델리게이트
+FSearchStateSignature onSearchState;
+
+
+//세션(방)입장함수
+void JoinSelectedSession(int32 roomIndex);
+
+void OnJoinSessionComplete(FName sessionName, EOnJoinSessionCompleteResult::Type result);
+
 };

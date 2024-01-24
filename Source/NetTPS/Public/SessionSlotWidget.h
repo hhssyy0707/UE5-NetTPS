@@ -40,4 +40,14 @@ public:
 
 	void Set(const struct FSessionInfo& sessionInfo);
 
+	
+
+	//세션 조인
+	
+	virtual void NativeConstruct() override;
+
+	UFUNCTION()
+	void JoinSession();
+
+
 };

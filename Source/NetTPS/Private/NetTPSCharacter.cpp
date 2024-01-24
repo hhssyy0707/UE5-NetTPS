@@ -302,6 +302,12 @@ void ANetTPSCharacter::PostNetInit()
 
 	Super::PostNetInit();
 
+	//  늦게 서버에 들어온 사람들을 위해 attach 를 따로 시켜주자
+	// 총 동기화
+	if (bHasPistol && OwnedPistol) {
+		AttachPistol(OwnedPistol);
+	}
+
 	PRINTLOG(TEXT("End"));
 
 }
@@ -748,6 +754,7 @@ void ANetTPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	//DOREPLIFETIME(ANetTPSCharacter, CurrentBulletCount);
 	DOREPLIFETIME(ANetTPSCharacter, CurrentHP);
 	//DOREPLIFETIME(ANetTPSCharacter, IsDead);
+	DOREPLIFETIME(ANetTPSCharacter, OwnedPistol);
 	
 
 }

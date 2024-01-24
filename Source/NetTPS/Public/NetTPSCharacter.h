@@ -89,10 +89,12 @@ public:
 	float MaxDistanceToGun = 200.0f;
 
 	// 소유중인 총
-	UPROPERTY()
+	// 240124 Replicated On + GetLifetimeReplicatedProps 변경 같이
+	UPROPERTY(Replicated)
 	AActor* OwnedPistol = nullptr;
 
-
+	////네트워크에서 내 데이터를 동기화 시켜줌
+	//virtual void PostNetInit() override;
 	
 	//Input Action
 	UPROPERTY(EditDefaultsOnly, Category = "Input")

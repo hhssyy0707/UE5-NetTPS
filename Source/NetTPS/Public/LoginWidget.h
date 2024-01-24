@@ -48,11 +48,34 @@ class UButton* BTN_Back;
 UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (BindWidget))
 class UButton* BTN_Back1;
 
+public:
+//세션슬롯
+UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+class UScrollBox* Scroll_RoomList;
 
+UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+class UButton* BTN_Find;
+
+UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+class UTextBlock* TXT_SearchingMsg;
+
+
+//세션 슬롯 위젯
 UPROPERTY(EditDefaultsOnly)
-class USessionSlotWidget* slotWidget;
+TSubclassOf<class USessionSlotWidget> sessionSlotWidget;
+//class USessionSlotWidget* slotWidget;
 
+UFUNCTION()
+void AddSlotWidget(const struct FSessionInfo& sessionInfo);
 
+UFUNCTION()
+void OnClickedFindSession();
+
+	//Delegatee
+	//방찾기 상태 이벤트 콜백
+	//브로드캐스트때 호출될 녀석
+	UFUNCTION()
+	void OnChangeButtonEnabled(bool bIsSearching);
 
 
 public:
@@ -64,7 +87,6 @@ public:
 	//슬라이더값 변경시 호출되는 함수 
 	UFUNCTION()
 	void OnValueChanged(float value);
-
 
 
 
