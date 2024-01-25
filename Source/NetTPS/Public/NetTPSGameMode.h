@@ -13,6 +13,13 @@ class ANetTPSGameMode : public AGameModeBase
 
 public:
 	ANetTPSGameMode();
+
+	//240125 추가
+	// Player를 원하는 위치에 리스폰 시키고 싶을때 사용하는 함수
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MemberNum = 8;
 };
 
 

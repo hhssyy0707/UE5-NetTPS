@@ -59,7 +59,6 @@ class UButton* BTN_Find;
 UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 class UTextBlock* TXT_SearchingMsg;
 
-
 //¼¼¼Ç ½½·Ô À§Á¬
 UPROPERTY(EditDefaultsOnly)
 TSubclassOf<class USessionSlotWidget> sessionSlotWidget;
@@ -99,6 +98,10 @@ public:
 	UFUNCTION()
 	void SwitchMainPanel();
 
+	
+public:
+UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+class UEditableText* ETXT_UserName;
 
 
 };

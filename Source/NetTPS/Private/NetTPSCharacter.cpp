@@ -20,6 +20,7 @@
 #include "Net/UnrealNetwork.h"// DOREPLIFETIME 
 #include "Components/HorizontalBox.h"//HorizontalBox
 #include "NetPlayerController.h"
+#include "NetPlayerState.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -571,6 +572,11 @@ void ANetTPSCharacter::ServerRPC_Fire_Implementation()
 
 		if (OtherPlayer) {
 			OtherPlayer->DamageProcess();
+
+			// 240125 추가
+			// 상대편 맞췄을 때 점수 1점 씩 증가
+			auto ps  = GetPlayerState<ANetPlayerState>();
+			ps->SetScore(ps->GetScore()+1);
 		}
 	}
 	// 총알 소모
@@ -630,6 +636,35 @@ void ANetTPSCharacter::ClientRPC_Reload_Implementation()
 	IsReloading = false;
 }
 
+void ANetTPSCharacter::StartVoiceChat()
+{
+	auto pc = GetController<ANetPlayerController>();
+	pc->StartTalking();
+}
+
+void ANetTPSCharacter::StopVoiceChat()
+{
+	auto pc = GetController<ANetPlayerController>();
+	pc->StopTalking();
+
+}
+
+void ANetTPSCharacter::ServerRPC_SendMsg_Implementation(const FString& msg)
+{
+	// 모든 클라이언트들한테 메세지 전달
+	MultiRPC_SendMsg(msg);
+
+}
+
+void ANetTPSCharacter::MultiRPC_SendMsg_Implementation(const FString& msg)
+{
+	// 월드에 있는 플레이어 컨트롤러 찾아오기
+	auto pc = Cast<ANetPlayerController>(GetWorld()->GetFirstPlayerController());
+	if (pc) {
+		pc->MainUI->ReceiveMsg(msg);
+	}
+}
+
 void ANetTPSCharacter::DetachPistol(AActor* PistolActor)
 {
 	auto MeshComp = PistolActor->GetComponentByClass<UStaticMeshComponent>();
@@ -683,6 +718,10 @@ void ANetTPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		
 		// 재장전
 		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &ANetTPSCharacter::ReloadPistol);
+
+		EnhancedInputComponent->BindAction(VoiceAction, ETriggerEvent::Started, this, &ANetTPSCharacter::StartVoiceChat);
+
+		EnhancedInputComponent->BindAction(VoiceAction, ETriggerEvent::Completed, this, &ANetTPSCharacter::StopVoiceChat);
 
 
 	}

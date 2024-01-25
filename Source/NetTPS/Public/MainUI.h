@@ -14,7 +14,11 @@ class NETTPS_API UMainUI : public UUserWidget
 {
 	GENERATED_BODY()
 	
+//protected:
+	
+
 public:
+
 	UPROPERTY(BlueprintReadWrite, Category = "UI", meta = (BindWidget))
 	class UImage* IM_Crosshair;
 
@@ -59,8 +63,39 @@ public:
 
 public:
 	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	//리트라이 버튼 눌렀을 때 실행되는 함수
 	UFUNCTION()
 	void OnRetry();
+
+
+	
+public:
+//UPROPERTY(EditDefaultsOnly, BlueprintReadWrite,  meta = (BindWidget))
+UPROPERTY(meta = (BindWidget))
+class UTextBlock* TXT_UserName;
+
+// 채팅===============================
+public:
+UPROPERTY(meta = (BindWidget))
+class UScrollBox* Scroll_MsgList;
+
+UPROPERTY(meta = (BindWidget))
+class UEditableText* ETXT_MsgInput;
+
+UPROPERTY(meta = (BindWidget))
+class UButton* BTN_MsgSend;
+
+UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+TSubclassOf<class UChatWidget> chatWidget;
+
+
+	UFUNCTION()
+	void SendMsg();
+
+	UFUNCTION()
+	void ReceiveMsg(const FString& msg);
+
+
 };

@@ -102,12 +102,25 @@ void ULoginWidget::OnChangeButtonEnabled(bool bIsSearching)
 
 void ULoginWidget::SwitchCreatePanel()
 {
+
+	FString UserName = ETXT_UserName->GetText().ToString();
+
+	if (UserName.IsEmpty() == false) {
+		gi->hostName = UserName;
+	}
+
 	widgetSwitcher->SetActiveWidgetIndex(1);
 
 }
 
 void ULoginWidget::SwitchFindPanel()
 {
+
+	FString UserName = ETXT_UserName->GetText().ToString();
+	if (UserName.IsEmpty() == false) {
+		gi->hostName = UserName;
+	}
+
 	widgetSwitcher->SetActiveWidgetIndex(2);
 	
 	//방 목록 검색

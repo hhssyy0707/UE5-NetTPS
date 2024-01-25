@@ -235,5 +235,24 @@ public:
 	UFUNCTION(Client , Reliable)
 	void ClientRPC_Reload();
 
+
+public:
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* VoiceAction;
+
+	void StartVoiceChat();
+	void StopVoiceChat();
+
+
+public:
+// chat===============
+UFUNCTION(Server, Reliable)
+void ServerRPC_SendMsg(const FString& msg);
+
+UFUNCTION(NetMulticast, Reliable)
+void MultiRPC_SendMsg(const FString& msg);
+
+
 };
 
